@@ -6,7 +6,10 @@ import { formatPrice } from '../utils/format';
 interface LocationState {
   order: { id: string; status: string };
   paymentMethod: string;
-  paymentData: { pix?: { qrcode?: string; qrcode_image?: string; code?: string } };
+  paymentData: {
+    pix?: { qrcode?: string; qrcode_image?: string; code?: string };
+    transaction_hash?: string;
+  };
   total: number;
   items: Array<{ name: string; price: number; quantity: number; image_url?: string }>;
   customer: { name: string };
@@ -18,9 +21,34 @@ export default function PaymentConfirmationPage() {
   const state = location.state as LocationState | null;
   const [copied, setCopied] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [statusText, setStatusText] = useState('Aguardando pagamento');
 
   useEffect(() => {
     if (!state?.order?.id) navigate('/shop/checkout', { replace: true });
+  }, [state, navigate]);
+
+  useEffect(() => {
+    if (!state?.order?.id || state.order.status === 'paid') return;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/orders/${state.order.id}/payment-status`);
+        const data = await res.json();
+        if (data.paid) {
+          setStatusText('Pagamento confirmado!');
+          navigate(`/shop/upsell?order=${state.order.id}`, {
+            replace: true,
+            state: { order: data.order, paid: true },
+          });
+        }
+      } catch {
+        /* ignore transient errors */
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => clearInterval(interval);
   }, [state, navigate]);
 
   if (!state?.order) return null;
@@ -32,17 +60,27 @@ export default function PaymentConfirmationPage() {
   const qrImage = state.paymentData?.pix?.qrcode_image || '';
 
   const copyCode = async () => {
+    if (!pixCode) return;
     await navigator.clipboard.writeText(pixCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const simulatePayment = async () => {
+  const checkNow = async () => {
     setChecking(true);
-    await fetch(`/api/orders/${state.order.id}/confirm-payment`, { method: 'POST' });
-    navigate(`/shop/upsell?order=${state.order.id}`, {
-      state: { order: state.order, paid: true },
-    });
+    try {
+      const res = await fetch(`/api/orders/${state.order.id}/payment-status`);
+      const data = await res.json();
+      if (data.paid) {
+        navigate(`/shop/upsell?order=${state.order.id}`, {
+          state: { order: data.order, paid: true },
+        });
+      } else {
+        setStatusText('Ainda aguardando confirmação do Pix...');
+      }
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -63,14 +101,19 @@ export default function PaymentConfirmationPage() {
           <img src={qrImage} alt="QR Code Pix" className="w-[220px] h-[220px] mx-auto my-4 border rounded-lg" />
         )}
 
-        <div className="bg-gray-50 rounded-lg p-3 text-left">
-          <p className="text-[11px] text-gray-500 mb-1">Código Pix Copia e Cola</p>
-          <p className="text-[11px] break-all text-gray-700 leading-relaxed">{pixCode}</p>
-        </div>
+        {pixCode ? (
+          <div className="bg-gray-50 rounded-lg p-3 text-left">
+            <p className="text-[11px] text-gray-500 mb-1">Código Pix Copia e Cola</p>
+            <p className="text-[11px] break-all text-gray-700 leading-relaxed">{pixCode}</p>
+          </div>
+        ) : (
+          <p className="text-[13px] text-red-600">Pix não retornado pela IronPay. Verifique as credenciais no .env</p>
+        )}
 
         <button
           onClick={copyCode}
-          className="w-full mt-3 py-3 rounded-lg text-white font-bold"
+          disabled={!pixCode}
+          className="w-full mt-3 py-3 rounded-lg text-white font-bold disabled:opacity-50"
           style={{ backgroundColor: BRAND_COLOR }}
         >
           {copied ? 'Copiado!' : 'Copiar código Pix'}
@@ -92,18 +135,18 @@ export default function PaymentConfirmationPage() {
       </div>
 
       <div className="mx-4 mt-4 bg-yellow-50 border border-yellow-100 rounded-xl p-4 text-[13px] text-yellow-800">
-        <p className="font-medium mb-1">Aguardando pagamento</p>
-        <p>O pedido será confirmado automaticamente após a compensação do Pix.</p>
+        <p className="font-medium mb-1">{statusText}</p>
+        <p>O pedido será confirmado automaticamente após a compensação do Pix via IronPay.</p>
       </div>
 
       <div className="mx-4 mt-4">
         <button
-          onClick={simulatePayment}
+          onClick={checkNow}
           disabled={checking}
           className="w-full py-3 rounded-lg border-2 font-medium text-[14px] disabled:opacity-60"
           style={{ borderColor: BRAND_COLOR, color: BRAND_COLOR }}
         >
-          {checking ? 'Confirmando...' : 'Simular pagamento confirmado (demo)'}
+          {checking ? 'Verificando...' : 'Já paguei — verificar agora'}
         </button>
       </div>
     </div>

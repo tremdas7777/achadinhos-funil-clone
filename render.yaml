@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: achadinhos-funil-clone
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: IRONPAY_API_TOKEN
+        sync: false
+      - key: IRONPAY_OFFER_HASH
+        sync: false
+      - key: IRONPAY_BUMP_OFFER_HASH
+        sync: false
+      - key: IRONPAY_PRODUCT_HASH
+        sync: false
+      - key: IRONPAY_POSTBACK_URL
+        sync: false

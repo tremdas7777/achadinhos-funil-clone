@@ -17,13 +17,33 @@ export default function UpsellPage() {
     return upsellOffers[hash % upsellOffers.length];
   }, [orderId]);
 
+  const [orderData, setOrderData] = useState<{
+    customer_name: string;
+    customer_email: string;
+    customer_phone: string;
+    customer_cpf: string;
+    address_street: string;
+    address_city: string;
+    address_state: string;
+    address_zip: string;
+    address_neighborhood?: string;
+  } | null>(null);
+
   useEffect(() => {
     if (!orderId) navigate('/shop/checkout', { replace: true });
+    else {
+      fetch(`/api/orders/${orderId}`)
+        .then((r) => r.json())
+        .then((data) => setOrderData(data.order))
+        .catch(() => null);
+    }
   }, [orderId, navigate]);
 
   const handleResgate = async () => {
+    if (!orderData) return;
     setLoading(true);
     try {
+      const [street, ...rest] = (orderData.address_street || '').split(',');
       const res = await fetch('/api/upsell-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -32,15 +52,33 @@ export default function UpsellPage() {
           offer_id: offer.id,
           product_name: offer.product_name,
           shipping_price: offer.shipping_price,
+          customer: {
+            name: orderData.customer_name,
+            email: orderData.customer_email,
+            phone: orderData.customer_phone,
+            cpf: orderData.customer_cpf,
+          },
+          address: {
+            street: street?.trim() || orderData.address_street,
+            number: rest.join(',').trim() || 'S/N',
+            complement: '',
+            neighborhood: orderData.address_neighborhood || '',
+            city: orderData.address_city,
+            state: orderData.address_state,
+            zip: orderData.address_zip,
+          },
         }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao gerar Pix');
       setPixData({
         qrcode: data.pix.qrcode,
         qrcode_image: data.pix.qrcode_image,
         amount: data.amount,
       });
       setShowPix(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao gerar Pix');
     } finally {
       setLoading(false);
     }

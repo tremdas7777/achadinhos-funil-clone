@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BRAND_COLOR, bumpOffer, settings } from '../data/product';
 import { formatPrice, maskCep, maskCpf, maskPhone, fetchCep } from '../utils/format';
-import { seedDefaultCart, useCart, useCartTotals } from '../context/CartContext';
+import { seedDefaultCart, useCart, useCartTotals, BUMP_COMBO_TOTAL } from '../context/CartContext';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -18,7 +18,6 @@ export default function CheckoutPage() {
   } = useCart();
   const { subtotal, bumpPrice, shipping, insurance, total } = useCartTotals();
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit_card'>('pix');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -52,6 +51,8 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
+      const params = new URLSearchParams(window.location.search);
+
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,14 +74,21 @@ export default function CheckoutPage() {
                   product_id: bumpOffer.product.id,
                   name: bumpOffer.product.name,
                   price: bumpOffer.promo_price,
+                  image_url: bumpOffer.product.image_url,
                 },
               ]
             : [],
-          payment_method: paymentMethod,
           insurance: insuranceSelected,
           subtotal: subtotal + bumpPrice,
           shipping,
           total,
+          tracking: {
+            utm_source: params.get('utm_source') || '',
+            utm_medium: params.get('utm_medium') || '',
+            utm_campaign: params.get('utm_campaign') || '',
+            utm_content: params.get('utm_content') || '',
+            utm_term: params.get('utm_term') || '',
+          },
         }),
       });
 
@@ -90,7 +98,7 @@ export default function CheckoutPage() {
       navigate('/shop/payment-confirmation', {
         state: {
           order: data.order,
-          paymentMethod,
+          paymentMethod: 'pix',
           paymentData: data.payment,
           total,
           subtotal: subtotal + bumpPrice,
@@ -234,8 +242,12 @@ export default function CheckoutPage() {
       </div>
 
       <div className="bg-white mt-2 px-4 py-4">
-        <h2 className="text-[15px] font-bold mb-3">Oferta especial 🎁</h2>
-        <label className="flex gap-3 items-start border-2 border-orange-100 rounded-lg p-3 cursor-pointer">
+        <h2 className="text-[15px] font-bold mb-3">Order Bump — Oferta exclusiva 🔥</h2>
+        <label
+          className={`flex gap-3 items-start border-2 rounded-lg p-3 cursor-pointer transition-colors ${
+            bumpSelected ? 'border-brand bg-orange-50' : 'border-orange-100'
+          }`}
+        >
           <input
             type="checkbox"
             checked={bumpSelected}
@@ -246,11 +258,23 @@ export default function CheckoutPage() {
           <div className="flex-1">
             <p className="text-[13px] font-medium">{bumpOffer.product.name}</p>
             <p className="text-[11px] text-gray-500">{bumpOffer.description}</p>
-            <p className="text-[14px] font-bold mt-1" style={{ color: BRAND_COLOR }}>
-              R${formatPrice(bumpOffer.promo_price)}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[12px] text-gray-400 line-through">R${formatPrice(bumpOffer.product.price)}</span>
+              <span className="text-[14px] font-bold" style={{ color: BRAND_COLOR }}>
+                R${formatPrice(bumpOffer.promo_price)}
+              </span>
+            </div>
           </div>
         </label>
+        {bumpSelected ? (
+          <p className="text-[12px] text-green-600 mt-2 font-medium">
+            Ticket 2 — Total com bump: R${formatPrice(BUMP_COMBO_TOTAL)}
+          </p>
+        ) : (
+          <p className="text-[12px] text-gray-500 mt-2">
+            Ticket 1 — Sem bump: R${formatPrice(item.price)}
+          </p>
+        )}
       </div>
 
       {settings.insurance.is_active && (
@@ -272,27 +296,29 @@ export default function CheckoutPage() {
       )}
 
       <div className="bg-white mt-2 px-4 py-4">
-        <h2 className="text-[15px] font-bold mb-3">Forma de pagamento</h2>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => setPaymentMethod('pix')}
-            className={`border-2 rounded-lg p-3 text-left ${paymentMethod === 'pix' ? 'border-brand bg-orange-50' : 'border-gray-200'}`}
-          >
-            <p className="text-[14px] font-bold">Pix</p>
-            <p className="text-[11px] text-gray-500">Aprovação imediata</p>
-          </button>
-          <button
-            onClick={() => setPaymentMethod('credit_card')}
-            className={`border-2 rounded-lg p-3 text-left ${paymentMethod === 'credit_card' ? 'border-brand bg-orange-50' : 'border-gray-200'}`}
-          >
-            <p className="text-[14px] font-bold">Cartão</p>
-            <p className="text-[11px] text-gray-500">Até 12x</p>
-          </button>
+        <div className="flex items-center gap-3 border-2 border-brand bg-orange-50 rounded-lg p-4">
+          <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold text-sm">
+            Pix
+          </div>
+          <div>
+            <p className="text-[14px] font-bold">Pagamento via Pix</p>
+            <p className="text-[12px] text-gray-500">Aprovação imediata · IronPay</p>
+          </div>
         </div>
       </div>
 
       <div className="bg-white mt-2 px-4 py-4 text-[14px] space-y-2">
         <div className="flex justify-between">
+          <span className="text-gray-600 line-clamp-1 pr-2">{item.name.trim()}</span>
+          <span>R${formatPrice(item.price)}</span>
+        </div>
+        {bumpSelected && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">🎁 {bumpOffer.product.name}</span>
+            <span>R${formatPrice(bumpOffer.promo_price)}</span>
+          </div>
+        )}
+        <div className="flex justify-between pt-1 border-t border-gray-100">
           <span className="text-gray-600">Subtotal</span>
           <span>R${formatPrice(subtotal + bumpPrice)}</span>
         </div>
@@ -307,9 +333,12 @@ export default function CheckoutPage() {
           </div>
         )}
         <div className="flex justify-between font-bold text-[16px] pt-2 border-t">
-          <span>Total</span>
+          <span>Total no Pix</span>
           <span style={{ color: BRAND_COLOR }}>R${formatPrice(total)}</span>
         </div>
+        {bumpSelected && !insuranceSelected && total === BUMP_COMBO_TOTAL && (
+          <p className="text-[11px] text-gray-500 text-right">Espelho + Maleta = R$77,40</p>
+        )}
       </div>
 
       {error && <p className="mx-4 mt-3 text-[13px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
@@ -322,7 +351,7 @@ export default function CheckoutPage() {
           className="w-full py-3.5 rounded-lg text-white font-bold text-[16px] disabled:opacity-60"
           style={{ backgroundColor: BRAND_COLOR }}
         >
-          {loading ? 'Gerando pedido...' : paymentMethod === 'pix' ? 'Finalizar com Pix' : 'Finalizar com Cartão'}
+          {loading ? 'Gerando Pix...' : 'Finalizar com Pix'}
         </button>
       </div>
     </div>

@@ -1,5 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import { product as mainProduct } from '../data/product';
+import { product as mainProduct, bumpOffer } from '../data/product';
+
+export const BUMP_COMBO_TOTAL = mainProduct.price + bumpOffer.promo_price;
 
 export interface CartItem {
   product_id: string;
@@ -55,7 +57,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [bumpSelected, setBumpSelected] = useState(false);
+  const [bumpSelected, setBumpSelected] = useState(true);
   const [insuranceSelected, setInsuranceSelected] = useState(false);
   const [customer, setCustomerState] = useState<CustomerData>(defaultCustomer);
 
@@ -93,7 +95,7 @@ export function useCart() {
 export function useCartTotals() {
   const { items, bumpSelected, insuranceSelected } = useCart();
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const bumpPrice = bumpSelected ? 19.9 : 0;
+  const bumpPrice = bumpSelected ? bumpOffer.promo_price : 0;
   const shipping = 0;
   const insurance = insuranceSelected ? 10.21 : 0;
   const total = subtotal + bumpPrice + shipping + insurance;
