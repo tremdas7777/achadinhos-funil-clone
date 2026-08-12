@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BRAND_COLOR, bumpOffer, settings } from '../data/product';
 import { formatPrice, maskCep, maskCpf, maskPhone, fetchCep } from '../utils/format';
 import { seedDefaultCart, useCart, useCartTotals, BUMP_COMBO_TOTAL } from '../context/CartContext';
+import { apiFetch } from '../lib/api';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -53,7 +54,7 @@ export default function CheckoutPage() {
     try {
       const params = new URLSearchParams(window.location.search);
 
-      const res = await fetch('/api/orders', {
+      const res = await apiFetch('/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

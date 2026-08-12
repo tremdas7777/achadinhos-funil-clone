@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BRAND_COLOR } from '../data/product';
 import { formatPrice } from '../utils/format';
+import { apiFetch } from '../lib/api';
 
 interface LocationState {
   order: { id: string; status: string };
@@ -32,7 +33,7 @@ export default function PaymentConfirmationPage() {
 
     const poll = async () => {
       try {
-        const res = await fetch(`/api/orders/${state.order.id}/payment-status`);
+        const res = await apiFetch(`/orders/${state.order.id}/payment-status`);
         const data = await res.json();
         if (data.paid) {
           setStatusText('Pagamento confirmado!');
@@ -69,7 +70,7 @@ export default function PaymentConfirmationPage() {
   const checkNow = async () => {
     setChecking(true);
     try {
-      const res = await fetch(`/api/orders/${state.order.id}/payment-status`);
+      const res = await apiFetch(`/orders/${state.order.id}/payment-status`);
       const data = await res.json();
       if (data.paid) {
         navigate(`/shop/upsell?order=${state.order.id}`, {

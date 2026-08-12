@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BRAND_COLOR, upsellOffers } from '../data/product';
 import { formatPrice } from '../utils/format';
+import { apiFetch } from '../lib/api';
 
 export default function UpsellPage() {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ export default function UpsellPage() {
   useEffect(() => {
     if (!orderId) navigate('/shop/checkout', { replace: true });
     else {
-      fetch(`/api/orders/${orderId}`)
+      apiFetch(`/orders/${orderId}`)
         .then((r) => r.json())
         .then((data) => setOrderData(data.order))
         .catch(() => null);
@@ -44,7 +45,7 @@ export default function UpsellPage() {
     setLoading(true);
     try {
       const [street, ...rest] = (orderData.address_street || '').split(',');
-      const res = await fetch('/api/upsell-payment', {
+      const res = await apiFetch('/upsell-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

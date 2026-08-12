@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BRAND_COLOR } from '../data/product';
 import { formatPrice } from '../utils/format';
 import { useCart } from '../context/CartContext';
+import { apiFetch } from '../lib/api';
 
 interface Order {
   id: string;
@@ -23,7 +24,7 @@ export default function ThankYouPage() {
   useEffect(() => {
     clearCart();
     if (!orderId) return;
-    fetch(`/api/orders/${orderId}`)
+    apiFetch(`/orders/${orderId}`)
       .then((r) => r.json())
       .then((data) => setOrder(data.order))
       .catch(() => null);
