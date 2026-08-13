@@ -19,7 +19,18 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     headers.set('apikey', supabaseKey);
   }
 
-  return fetch(`${getApiBase()}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBase()}${path}`, { ...options, headers });
+  } catch {
+    throw new Error(
+      supabaseUrl
+        ? 'Não foi possível conectar à API. Verifique se a Edge Function achadinhos-api está publicada no Lovable.'
+        : 'Não foi possível conectar à API. Execute npm run dev e acesse http://localhost:5173',
+    );
+  }
+
+  return res;
 }
 
 export function isLovableProduction() {

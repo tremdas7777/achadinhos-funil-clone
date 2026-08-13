@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BRAND_COLOR, bumpOffer, settings } from '../data/product';
 import { formatPrice, maskCep, maskCpf, maskNumber, maskPhone, fetchCep, isValidEmail } from '../utils/format';
@@ -22,6 +22,12 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState('');
+  const errorRef = useRef<HTMLParagraphElement>(null);
+
+  const showError = (message: string) => {
+    setError(message);
+    setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
+  };
 
   useEffect(() => {
     if (items.length === 0) seedDefaultCart(addItem);
@@ -68,15 +74,20 @@ export default function CheckoutPage() {
 
   const handleSubmit = async () => {
     setError('');
-    if (!customer.name.trim()) return setError('Informe seu nome completo');
-    if (!customer.email.trim()) return setError('Informe seu e-mail');
-    if (!isValidEmail(customer.email)) return setError('Informe um e-mail válido');
-    if (!customer.phone.replace(/\D/g, '').match(/^\d{10,11}$/)) return setError('Informe um telefone válido');
-    if (!customer.cpf.replace(/\D/g, '').match(/^\d{11}$/)) return setError('Informe um CPF válido');
-    if (!customer.zip.replace(/\D/g, '').match(/^\d{8}$/)) return setError('Informe um CEP válido');
+    if (!customer.name.trim()) return showError('Informe seu nome completo');
+    if (!customer.email.trim()) return showError('Informe seu e-mail');
+    if (!isValidEmail(customer.email)) return showError('Informe um e-mail válido');
+    if (!customer.phone.replace(/\D/g, '').match(/^\d{10,11}$/)) return showError('Informe um telefone válido');
+    if (!customer.cpf.replace(/\D/g, '').match(/^\d{11}$/)) return showError('Informe um CPF válido');
+    if (!customer.zip.replace(/\D/g, '').match(/^\d{8}$/)) return showError('Informe um CEP válido');
     if (!customer.street.trim() || !customer.number.trim() || !customer.neighborhood.trim() || !customer.city.trim() || !customer.state.trim()) {
-      return setError('Complete o endereço de entrega');
+      return showError('Complete o endereço de entrega (rua, número, bairro, cidade e UF)');
     }
+
+    const normalizedCustomer = {
+      ...customer,
+      email: customer.email.trim().toLowerCase(),
+    };
 
     setLoading(true);
     try {
@@ -86,7 +97,7 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customer,
+          customer: normalizedCustomer,
           address: {
             zip: customer.zip,
             street: customer.street,
@@ -121,7 +132,12 @@ export default function CheckoutPage() {
         }),
       });
 
-      const data = await res.json();
+      let data: { error?: string; order?: unknown; payment?: unknown };
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error('Resposta inválida do servidor. Tente novamente.');
+      }
       if (!res.ok) throw new Error(data.error || 'Erro ao criar pedido');
 
       navigate('/shop/payment-confirmation', {
@@ -147,11 +163,11 @@ export default function CheckoutPage() {
                 ]
               : []),
           ],
-          customer,
+          customer: normalizedCustomer,
         },
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao finalizar pedido');
+      showError(err instanceof Error ? err.message : 'Erro ao finalizar pedido');
     } finally {
       setLoading(false);
     }
@@ -201,7 +217,7 @@ export default function CheckoutPage() {
           type="email"
           placeholder="E-mail"
           value={customer.email}
-          onChange={(e) => setCustomer({ email: e.target.value.trim().toLowerCase() })}
+          onChange={(e) => setCustomer({ email: e.target.value })}
           autoComplete="email"
           inputMode="email"
           className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[14px]"
@@ -389,7 +405,11 @@ export default function CheckoutPage() {
         )}
       </div>
 
-      {error && <p className="mx-4 mt-3 text-[13px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+      {error && (
+        <p ref={errorRef} className="mx-4 mt-3 text-[13px] text-red-600 bg-red-50 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 max-w-lg mx-auto">
         <button
