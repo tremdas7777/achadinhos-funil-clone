@@ -22,7 +22,6 @@ export default function PaymentConfirmationPage() {
   const state = location.state as LocationState | null;
   const [copied, setCopied] = useState(false);
   const [checking, setChecking] = useState(false);
-  const [statusText, setStatusText] = useState('Aguardando pagamento');
 
   useEffect(() => {
     if (!state?.order?.id) navigate('/shop/checkout', { replace: true });
@@ -36,7 +35,6 @@ export default function PaymentConfirmationPage() {
         const res = await apiFetch(`/orders/${state.order.id}/payment-status`);
         const data = await res.json();
         if (data.paid) {
-          setStatusText('Pagamento confirmado!');
           navigate(`/shop/upsell?order=${state.order.id}`, {
             replace: true,
             state: { order: data.order, paid: true },
@@ -76,8 +74,6 @@ export default function PaymentConfirmationPage() {
         navigate(`/shop/upsell?order=${state.order.id}`, {
           state: { order: data.order, paid: true },
         });
-      } else {
-        setStatusText('Ainda aguardando confirmação do Pix...');
       }
     } finally {
       setChecking(false);
@@ -133,11 +129,6 @@ export default function PaymentConfirmationPage() {
           <span>Total</span>
           <span style={{ color: BRAND_COLOR }}>R${formatPrice(state.total)}</span>
         </div>
-      </div>
-
-      <div className="mx-4 mt-4 bg-yellow-50 border border-yellow-100 rounded-xl p-4 text-[13px] text-yellow-800">
-        <p className="font-medium mb-1">{statusText}</p>
-        <p>O pedido será confirmado automaticamente após a compensação do Pix via IronPay.</p>
       </div>
 
       <div className="mx-4 mt-4">
