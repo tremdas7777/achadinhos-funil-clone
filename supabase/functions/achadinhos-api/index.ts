@@ -173,6 +173,11 @@ Deno.serve(async (req) => {
       if (!customer?.name || !customer?.phone || !customer?.cpf) {
         return json({ error: 'Dados do cliente incompletos' }, 400);
       }
+
+      const email = String(customer.email || '').trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+        return json({ error: 'Informe um e-mail válido' }, 400);
+      }
       if (!items?.length) return json({ error: 'Carrinho vazio' }, 400);
 
       const allItems = [

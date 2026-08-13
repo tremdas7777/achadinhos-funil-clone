@@ -57,7 +57,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [bumpSelected, setBumpSelected] = useState(true);
+  const [bumpSelected, setBumpSelected] = useState(false);
   const [insuranceSelected, setInsuranceSelected] = useState(false);
   const [customer, setCustomerState] = useState<CustomerData>(defaultCustomer);
 

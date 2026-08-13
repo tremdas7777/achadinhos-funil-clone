@@ -119,6 +119,11 @@ app.post('/api/orders', async (req, res) => {
       return res.status(400).json({ error: 'Dados do cliente incompletos' });
     }
 
+    const email = String(customer.email || '').trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      return res.status(400).json({ error: 'Informe um e-mail válido' });
+    }
+
     if (!items?.length) {
       return res.status(400).json({ error: 'Carrinho vazio' });
     }

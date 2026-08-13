@@ -37,6 +37,14 @@ export function maskCep(value: string): string {
   return digits.replace(/(\d{5})(\d{0,3})/, '$1-$2');
 }
 
+export function maskNumber(value: string): string {
+  return value.replace(/[^\dA-Za-z/\-]/g, '').slice(0, 10);
+}
+
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+}
+
 export function getInitial(name: string): string {
   return (name.trim()[0] || '?').toUpperCase();
 }
@@ -44,14 +52,18 @@ export function getInitial(name: string): string {
 export async function fetchCep(cep: string) {
   const clean = cep.replace(/\D/g, '');
   if (clean.length !== 8) return null;
-  const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (data.erro) return null;
-  return {
-    street: data.logradouro || '',
-    neighborhood: data.bairro || '',
-    city: data.localidade || '',
-    state: data.uf || '',
-  };
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.erro) return null;
+    return {
+      street: data.logradouro || '',
+      neighborhood: data.bairro || '',
+      city: data.localidade || '',
+      state: data.uf || '',
+    };
+  } catch {
+    return null;
+  }
 }
