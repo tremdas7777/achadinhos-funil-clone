@@ -1,0 +1,8 @@
+# Supabase local config (Lovable Cloud gerencia produção)
+project_id = "achadinhos-funil"
+
+[api]
+enabled = true
+
+[functions.achadinhos-api]
+verify_jwt = false
